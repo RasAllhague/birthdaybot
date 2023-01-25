@@ -9,7 +9,7 @@ use serenity::{
         },
         StandardFramework,
     },
-    model::prelude::{command, Message},
+    model::prelude::Message,
     prelude::{Context, GatewayIntents},
     Client,
 };
