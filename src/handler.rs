@@ -1,5 +1,10 @@
-use serenity::{prelude::{EventHandler, Context}, async_trait, model::prelude::{Ready, ResumedEvent, Message}, framework::standard::macros::hook};
-use tracing::{info, instrument, debug};
+use serenity::{
+    async_trait,
+    framework::standard::macros::hook,
+    model::prelude::{Message, Ready, ResumedEvent},
+    prelude::{Context, EventHandler},
+};
+use tracing::{debug, info, instrument};
 
 pub struct Handler;
 
@@ -22,7 +27,10 @@ impl EventHandler for Handler {
 #[hook]
 #[instrument]
 pub async fn before(_: &Context, msg: &Message, command_name: &str) -> bool {
-    info!("Got command '{}' by user '{}'", command_name, msg.author.name);
+    info!(
+        "Got command '{}' by user '{}'",
+        command_name, msg.author.name
+    );
 
     true
 }
