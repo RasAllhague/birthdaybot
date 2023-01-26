@@ -10,6 +10,22 @@ pub struct Birthday {
 }
 
 impl Birthday {
+    pub fn new(
+        guild_id: u64,
+        user_id: u64,
+        date: NaiveDateTime,
+        create_date: NaiveDateTime,
+    ) -> Birthday {
+        Birthday {
+            id_birthday: 0,
+            guild_id: guild_id as i64,
+            user_id: user_id as i64,
+            date,
+            create_date,
+            modify_date: None,
+        }
+    }
+
     pub async fn get(
         db: &PgPool,
         guild_id: u64,
@@ -39,10 +55,10 @@ impl Birthday {
                 VALUES
                 ($1, $2, $3, $4)
                 RETURNING id_birthday;",
-                self.guild_id,
-                self.user_id,
-                self.date,
-                self.create_date,
+            self.guild_id,
+            self.user_id,
+            self.date,
+            self.create_date,
         )
         .fetch_one(db)
         .await?

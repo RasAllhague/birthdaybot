@@ -21,6 +21,7 @@ use crate::commands::{
         run_clear_command, run_info_command, run_remove_command, run_set_command,
         run_subscribe_command, run_unsubscribe_command,
     },
+    CommandError,
 };
 
 pub struct Handler {
@@ -48,12 +49,12 @@ impl EventHandler for Handler {
             let embed = match content {
                 Ok(e) => e,
                 Err(why) => {
-                    tracing::error!("Cannot respond to slash command: {}", why);
+                    tracing::error!("Cannot respond to slash command: {:?}", why);
                     CreateEmbed(HashMap::new())
-                    .title("Interaction failure")
-                    .description("Command ran into an error.")
-                    .to_owned()
-                },
+                        .title("Interaction failure")
+                        .description("Command ran into an error.")
+                        .to_owned()
+                }
             };
 
             if let Err(why) = command
@@ -92,7 +93,7 @@ impl EventHandler for Handler {
 async fn dispatch_birthday_sub_command(
     command: &ApplicationCommandInteraction,
     database: &sqlx::PgPool,
-) -> Result<CreateEmbed, sqlx::Error> {
+) -> Result<CreateEmbed, CommandError> {
     let embed = CreateEmbed(HashMap::new())
         .title("Interaction failure")
         .description("Command has not been implemented.")
@@ -109,12 +110,15 @@ async fn dispatch_birthday_sub_command(
                 )
                 .await
             }
-            "set" => run_set_command(
-                &database,
-                &command.guild_id.unwrap(),
-                &command.user,
-                &subcommand.options,
-            ),
+            "set" => {
+                run_set_command(
+                    &database,
+                    &command.guild_id.unwrap(),
+                    &command.user,
+                    &subcommand.options,
+                )
+                .await
+            }
             "remove" => run_remove_command(
                 &database,
                 &command.guild_id.unwrap(),
