@@ -230,13 +230,19 @@ pub async fn run_unsubscribe_command(
         .parse(options, 0)
         .map_err(|x| CommandError::Parser(x))?;
 
-
     if let Some(birthday) = Birthday::get(db, guild_id.0, user_to_subcribe_to.id.0)
         .await
         .map_err(|x| CommandError::Db(x))?
     {
-        if let Some(subscription) = Subscription::get(db, guild_id.0, user.id.0, birthday.id_birthday).await.map_err(|x| CommandError::Db(x))? {
-            subscription.delete(db).await.map_err(|x| CommandError::Db(x))?;
+        if let Some(subscription) =
+            Subscription::get(db, guild_id.0, user.id.0, birthday.id_birthday)
+                .await
+                .map_err(|x| CommandError::Db(x))?
+        {
+            subscription
+                .delete(db)
+                .await
+                .map_err(|x| CommandError::Db(x))?;
 
             let embed = CreateEmbed(HashMap::new())
                 .title("Birthday Subscription:")
