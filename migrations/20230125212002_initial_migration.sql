@@ -9,8 +9,7 @@ CREATE TABLE birthday (
     create_date TIMESTAMP NOT NULL,
     modify_date TIMESTAMP,
     PRIMARY KEY (id_birthday),
-    UNIQUE(user_id),
-    UNIQUE(guild_id)
+    UNIQUE(user_id, guild_id)
 );
 
 CREATE TABLE subscription (
@@ -21,7 +20,6 @@ CREATE TABLE subscription (
     create_date TIMESTAMP NOT NULL,
     modify_date TIMESTAMP,
     PRIMARY KEY (id_subscription),
-    UNIQUE(user_id),
-    UNIQUE(guild_id),
+    UNIQUE(user_id, guild_id),
     FOREIGN KEY (birthday_id) REFERENCES birthday(id_birthday)
 );
