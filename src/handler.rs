@@ -1,5 +1,13 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
+use chrono::Datelike;
 use serenity::{
     async_trait,
     builder::CreateEmbed,
@@ -9,27 +17,43 @@ use serenity::{
             application_command::ApplicationCommandInteraction, Interaction,
             InteractionResponseType,
         },
-        Message, Ready, ResumedEvent,
+        Activity, ChannelId, GuildId, Message, Ready, ResumedEvent,
     },
     prelude::{Context, EventHandler},
 };
-use tracing::{debug, info, instrument};
+use sqlx::{
+    types::chrono::{NaiveDate, NaiveDateTime, Utc},
+    PgPool,
+};
+use tracing::{debug, error, info, instrument};
 
-use crate::commands::{
-    self,
-    birthday::{
-        run_info_command, run_remove_command, run_set_command, run_subscribe_command,
-        run_unsubscribe_command,
+use crate::{
+    commands::{
+        self,
+        birthday::{
+            self, run_info_command, run_remove_command, run_set_command, run_subscribe_command,
+            run_unsubscribe_command,
+        },
+        CommandError,
     },
-    CommandError,
+    models::{birthday::Birthday, subscription::Subscription},
 };
 
 pub struct Handler {
     pub database: sqlx::PgPool,
+    pub is_loop_running: AtomicBool,
 }
 
 #[async_trait]
 impl EventHandler for Handler {
+    async fn message(&self, ctx: Context, msg: Message) {
+        if msg.content.starts_with("!ping") {
+            if let Err(why) = msg.channel_id.say(&ctx.http, "Pong!").await {
+                eprintln!("Error sending message: {:?}", why);
+            }
+        }
+    }
+
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
             debug!("Received command interaction: {:#?}", command);
@@ -82,12 +106,160 @@ impl EventHandler for Handler {
             "I created the following global slash command: {:#?}",
             guild_command
         );
+
+        let ctx = Arc::new(ctx);
+        let db = Arc::new(self.database.clone());
+
+        if !self.is_loop_running.load(Ordering::Relaxed) {
+            let ctx1 = Arc::clone(&ctx);
+            tokio::spawn(async move {
+                loop {
+                    log_system_load(Arc::clone(&ctx1)).await;
+                    tokio::time::sleep(Duration::from_secs(120)).await;
+                }
+            });
+
+            let ctx2 = Arc::clone(&ctx);
+            tokio::spawn(async move {
+                loop {
+                    set_status_to_current_time(Arc::clone(&ctx2)).await;
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                }
+            });
+
+            let ctx3 = Arc::clone(&ctx);
+            let db1 = Arc::clone(&db);
+
+            tokio::spawn(async move {
+                let mut birthdays: Vec<(i32, NaiveDate)> = Vec::new();
+
+                loop {
+                    if let Err(why) =
+                        notify_birthdays(Arc::clone(&ctx3), Arc::clone(&db1), &mut birthdays).await
+                    {
+                        error!("Failed to notify birthdays, err: {}", why);
+                    };
+                    tokio::time::sleep(Duration::from_secs(60)).await;
+                }
+            });
+
+            self.is_loop_running.swap(true, Ordering::Relaxed);
+        }
     }
 
     #[instrument(skip(self, _ctx))]
     async fn resume(&self, _ctx: Context, resume: ResumedEvent) {
         debug!("Resumed; trace: {:?}", resume.trace);
     }
+}
+
+async fn notify_birthdays(
+    ctx: Arc<Context>,
+    db: Arc<PgPool>,
+    last_birthdays: &mut Vec<(i32, NaiveDate)>,
+) -> Result<(), sqlx::Error> {
+    info!("Notification started!");
+
+    let tmp = last_birthdays.clone();
+    let today = Utc::now().naive_utc().date();
+
+    let birthdays = Birthday::get_all(&db).await?;
+    let birthdays = birthdays
+        .iter()
+        .filter(|b| b.date.date() == today)
+        .filter(|b| {
+            !tmp.iter()
+                .any(|x| x.0 == b.id_birthday && x.1 == b.date.date())
+        });
+
+    for birthday in birthdays {
+        if let Ok(bday_user) = ctx.http.get_user(birthday.user_id()).await {
+            let subscriptions =
+                Subscription::get_all_by_birthday_id(&db, birthday.id_birthday).await?;
+
+            fun_name(subscriptions, &ctx, &bday_user.name, birthday.date.date()).await;
+        }
+
+        update_last_birthdays(last_birthdays, today);
+    }
+
+    info!("Notification finished!");
+
+    Ok(())
+}
+
+async fn fun_name(
+    subscriptions: Vec<Subscription>,
+    ctx: &Arc<Context>,
+    user_name: &str,
+    date: NaiveDate,
+) {
+    for subscription in subscriptions {
+        if let Ok(user) = ctx.http.get_user(subscription.user_id()).await {
+            if let Ok(priv_channel) = user.create_dm_channel(ctx).await {
+                if let Err(why) = priv_channel
+                    .send_message(&ctx.http, |message| {
+                        message.embed(|embed| {
+                            embed.title("Birthday:").description(format!(
+                                "Hey the user `{}` has birthday today ({}).",
+                                user_name, date,
+                            ))
+                        })
+                    })
+                    .await
+                {
+                    error!("Could not send birthday in dm channel, err: {}", why);
+                } else {
+                    info!("Notified of birthday!");
+                }
+            }
+        }
+    }
+}
+
+fn update_last_birthdays(last_birthdays: &mut Vec<(i32, NaiveDate)>, today: NaiveDate) {
+    for mut last_birthday in last_birthdays.iter_mut() {
+        if last_birthday.1 < today {
+            last_birthday.1 = today
+        }
+    }
+}
+
+async fn log_system_load(ctx: Arc<Context>) {
+    let cpu_load = sys_info::loadavg().unwrap();
+    let mem_use = sys_info::mem_info().unwrap();
+
+    let message = ChannelId(1068193557116096652)
+        .send_message(&ctx, |m| {
+            m.embed(|e| {
+                e.title("System Resource Load")
+                    .field(
+                        "CPU Load Average",
+                        format!("{:.2}%", cpu_load.one * 10.0),
+                        false,
+                    )
+                    .field(
+                        "Memory Usage",
+                        format!(
+                            "{:.2} MB Free out of {:.2} MB",
+                            mem_use.free as f32 / 1000.0,
+                            mem_use.total as f32 / 1000.0
+                        ),
+                        false,
+                    )
+            })
+        })
+        .await;
+    if let Err(why) = message {
+        error!("Error sending message: {:?}", why);
+    };
+}
+
+async fn set_status_to_current_time(ctx: Arc<Context>) {
+    let current_time = Utc::now();
+    let formatted_time = current_time.to_rfc2822();
+
+    ctx.set_activity(Activity::playing(&formatted_time)).await;
 }
 
 async fn dispatch_birthday_sub_command(

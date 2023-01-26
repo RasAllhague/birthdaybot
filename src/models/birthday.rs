@@ -27,6 +27,18 @@ impl Birthday {
         }
     }
 
+    pub async fn get_all(db: &PgPool) -> Result<Vec<Birthday>, sqlx::Error> {
+        let birthdays: Vec<Birthday> = sqlx::query_as!(
+            Birthday,
+            "SELECT id_birthday, guild_id, user_id, date, create_date, modify_date
+                FROM birthday;",
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(birthdays)
+    }
+
     pub async fn get_by_id(db: &PgPool, id: i32) -> Result<Option<Birthday>, sqlx::Error> {
         let birthday: Option<Birthday> = sqlx::query_as!(
             Birthday,

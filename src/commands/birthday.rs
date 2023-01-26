@@ -27,7 +27,7 @@ pub async fn run_info_command(
         .await
         .map_err(|x| CommandError::Db(x))?
     {
-        let subscriptions = Subscription::get_all(db, guild_id.0, user.id.0)
+        let subscriptions = Subscription::get_all_by_guild_and_user(db, guild_id.0, user.id.0)
             .await
             .map_err(|x| CommandError::Db(x))?;
 

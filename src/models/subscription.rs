@@ -32,7 +32,7 @@ impl Subscription {
         user_id: u64,
         birthday_id: i32,
     ) -> Result<Option<Subscription>, sqlx::Error> {
-        let birthday: Option<Subscription> = sqlx::query_as!(
+        let subscription: Option<Subscription> = sqlx::query_as!(
             Subscription,
             "SELECT id_subscription, guild_id, user_id, birthday_id, create_date, modify_date
                 FROM subscription
@@ -48,15 +48,15 @@ impl Subscription {
         .into_iter()
         .nth(0);
 
-        Ok(birthday)
+        Ok(subscription)
     }
 
-    pub async fn get_all(
+    pub async fn get_all_by_guild_and_user(
         db: &PgPool,
         guild_id: u64,
         user_id: u64,
     ) -> Result<Vec<Subscription>, sqlx::Error> {
-        let birthday: Vec<Subscription> = sqlx::query_as!(
+        let subscriptions: Vec<Subscription> = sqlx::query_as!(
             Subscription,
             "SELECT id_subscription, guild_id, user_id, birthday_id, create_date, modify_date
                 FROM subscription
@@ -68,7 +68,24 @@ impl Subscription {
         .fetch_all(db)
         .await?;
 
-        Ok(birthday)
+        Ok(subscriptions)
+    }
+
+    pub async fn get_all_by_birthday_id(
+        db: &PgPool,
+        birthday_id: i32,
+    ) -> Result<Vec<Subscription>, sqlx::Error> {
+        let subscriptions: Vec<Subscription> = sqlx::query_as!(
+            Subscription,
+            "SELECT id_subscription, guild_id, user_id, birthday_id, create_date, modify_date
+                FROM subscription
+                WHERE birthday_id = $1;",
+            birthday_id,
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(subscriptions)
     }
 
     pub async fn insert(&mut self, db: &PgPool) -> Result<(), sqlx::Error> {

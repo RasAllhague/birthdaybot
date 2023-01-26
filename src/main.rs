@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, sync::atomic::AtomicBool};
 
 use handler::Handler;
 use serenity::{prelude::GatewayIntents, Client};
@@ -28,9 +28,12 @@ async fn main() {
         .await
         .expect("Couldn't run database migrations");
 
-    let intents = GatewayIntents::empty();
+    let intents = GatewayIntents::default();
     let mut client = Client::builder(&token, intents)
-        .event_handler(Handler { database })
+        .event_handler(Handler {
+            database,
+            is_loop_running: AtomicBool::new(false),
+        })
         .await
         .expect("Err creating client");
 
