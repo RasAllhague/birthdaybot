@@ -10,6 +10,22 @@ pub struct Subscription {
 }
 
 impl Subscription {
+    pub fn new(
+        guild_id: u64,
+        user_id: u64,
+        birthday_id: i32,
+        create_date: NaiveDateTime,
+    ) -> Subscription {
+        Subscription {
+            id_subscription: 0,
+            guild_id: guild_id as i64,
+            user_id: user_id as i64,
+            birthday_id,
+            create_date,
+            modify_date: None,
+        }
+    }
+
     pub async fn get(
         db: &PgPool,
         guild_id: u64,
@@ -53,6 +69,27 @@ impl Subscription {
         .await?;
 
         Ok(birthday)
+    }
+
+    pub async fn insert(&mut self, db: &PgPool) -> Result<(), sqlx::Error> {
+        let id = sqlx::query!(
+            "INSERT INTO subscription 
+                (guild_id, user_id, birthday_id, create_date)
+                VALUES
+                ($1, $2, $3, $4)
+                RETURNING id_subscription;",
+            self.guild_id,
+            self.user_id,
+            self.birthday_id,
+            self.create_date,
+        )
+        .fetch_one(db)
+        .await?
+        .id_subscription;
+
+        self.id_subscription = id;
+
+        Ok(())
     }
 
     pub fn guild_id(&self) -> u64 {

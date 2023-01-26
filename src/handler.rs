@@ -9,7 +9,7 @@ use serenity::{
             application_command::ApplicationCommandInteraction, Interaction,
             InteractionResponseType,
         },
-        Message, Ready, ResumedEvent,
+        Message, Ready, ResumedEvent, PartialGuild,
     },
     prelude::{Context, EventHandler},
 };
@@ -39,7 +39,7 @@ impl EventHandler for Handler {
             }
 
             let content = match command.data.name.as_str() {
-                "birthday" => dispatch_birthday_sub_command(&command, &self.database).await,
+                "birthday" => dispatch_birthday_sub_command(&command, &ctx, &self.database).await,
                 _ => Ok(CreateEmbed(HashMap::new())
                     .title("Interaction failure")
                     .description("Command has not been implemented.")
@@ -92,6 +92,7 @@ impl EventHandler for Handler {
 
 async fn dispatch_birthday_sub_command(
     command: &ApplicationCommandInteraction,
+    ctx: &Context,
     database: &sqlx::PgPool,
 ) -> Result<CreateEmbed, CommandError> {
     let embed = CreateEmbed(HashMap::new())
@@ -101,7 +102,7 @@ async fn dispatch_birthday_sub_command(
 
     if let Some(subcommand) = command.data.options.get(0) {
         return match subcommand.name.as_str() {
-            "info" => run_info_command(&database, &command.guild_id.unwrap(), &command.user).await,
+            "info" => run_info_command(&database, &ctx, &command.guild_id.unwrap(), &command.user).await,
             "set" => {
                 run_set_command(
                     &database,
@@ -119,7 +120,7 @@ async fn dispatch_birthday_sub_command(
                 &command.guild_id.unwrap(),
                 &command.user,
                 &subcommand.options,
-            ),
+            ).await,
             "unsubscribe" => run_unsubscribe_command(
                 &database,
                 &command.guild_id.unwrap(),

@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
 use serenity::builder::{CreateApplicationCommand, CreateEmbed};
+use serenity::futures::future::join_all;
 use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::application_command::{
     CommandDataOption, CommandDataOptionValue,
 };
-use serenity::model::prelude::{Embed, GuildId};
+use serenity::model::prelude::{Embed, EmbedField, GuildId, PartialGuild};
 use serenity::model::user::User;
+use serenity::prelude::Context;
 use sqlx::types::chrono::{NaiveDate, NaiveDateTime, Utc};
 use sqlx::PgPool;
 use tracing::info;
@@ -15,16 +17,15 @@ use crate::models::birthday::{self, Birthday};
 use crate::models::subscription::Subscription;
 use crate::utils;
 
-use super::parser::DateInputParser;
+use super::parser::{DateInputParser, UserInputParser};
 use super::CommandError;
 
 pub async fn run_info_command(
     db: &PgPool,
+    ctx: &Context,
     guild_id: &GuildId,
     user: &User,
 ) -> Result<CreateEmbed, CommandError> {
-    info!("Gid: {}, uid: {}", guild_id, user.id);
-
     if let Some(bday) = Birthday::get(db, guild_id.0, user.id.0)
         .await
         .map_err(|x| CommandError::Db(x))?
@@ -32,6 +33,13 @@ pub async fn run_info_command(
         let subscriptions = Subscription::get_all(db, guild_id.0, user.id.0)
             .await
             .map_err(|x| CommandError::Db(x))?;
+
+        let fields = subscriptions
+            .iter()
+            .map(|s| async { gen_embed_field(db, guild_id.0, &ctx, s).await });
+
+        let fields: Result<Vec<(String, String, bool)>, CommandError> =
+            join_all(fields).await.into_iter().collect();
 
         let embed = CreateEmbed(HashMap::new())
             .title("Birthday:")
@@ -41,18 +49,26 @@ pub async fn run_info_command(
                     .name(user.name.clone())
                     .icon_url(utils::get_icon_url(user))
             })
+            .field("Subscriptions:", "", false)
+            .fields(fields?)
             .to_owned();
 
         return Ok(embed);
     }
 
     let embed = CreateEmbed(HashMap::new())
-        .title("Interaction failure")
+        .title("Birthday:")
         .description("You have not registered your birthday yet.")
+        .author(|author| {
+            author
+                .name(user.name.clone())
+                .icon_url(utils::get_icon_url(user))
+        })
         .to_owned();
 
     Ok(embed)
 }
+
 
 pub async fn run_set_command(
     db: &PgPool,
@@ -137,21 +153,75 @@ pub async fn run_remove_command(
     Ok(embed)
 }
 
-pub fn run_subscribe_command(
+pub async fn run_subscribe_command(
     db: &PgPool,
     guild_id: &GuildId,
     user: &User,
-    _options: &[CommandDataOption],
+    options: &[CommandDataOption],
 ) -> Result<CreateEmbed, CommandError> {
+    let user_to_subcribe_to = UserInputParser
+        .parse(options, 0)
+        .map_err(|x| CommandError::Parser(x))?;
+
+    if let Some(birthday) = Birthday::get(db, guild_id.0, user_to_subcribe_to.id.0)
+        .await
+        .map_err(|x| CommandError::Db(x))?
+    {
+        if let None = Subscription::get(db, guild_id.0, user.id.0, birthday.id_birthday)
+            .await
+            .map_err(|x| CommandError::Db(x))?
+        {
+            let mut subscription = Subscription::new(
+                guild_id.0,
+                user.id.0,
+                birthday.id_birthday,
+                Utc::now().naive_utc(),
+            );
+            subscription
+                .insert(db)
+                .await
+                .map_err(|x| CommandError::Db(x))?;
+
+            let embed = CreateEmbed(HashMap::new())
+                .title("Birthday Subscription:")
+                .description(format!(
+                    "You are now subcribed to the birthday of <@{}>.",
+                    user_to_subcribe_to.id
+                ))
+                .author(|author| {
+                    author
+                        .name(user.name.clone())
+                        .icon_url(utils::get_icon_url(user))
+                })
+                .to_owned();
+
+            return Ok(embed);
+        }
+
+        let embed = CreateEmbed(HashMap::new())
+            .title("Birthday Subscription:")
+            .description("You are already subscribed to this persons birthday.")
+            .author(|author| {
+                author
+                    .name(user.name.clone())
+                    .icon_url(utils::get_icon_url(user))
+            })
+            .to_owned();
+
+        return Ok(embed);
+    }
+
     let embed = CreateEmbed(HashMap::new())
-        .title("Interaction test")
-        .description(format!(
-            "Subscribe command from guild: {}, user: {}",
-            guild_id, user.id
-        ))
+        .title("Birthday Subscription:")
+        .description("The targeted user does not provide a birthday.")
+        .author(|author| {
+            author
+                .name(user.name.clone())
+                .icon_url(utils::get_icon_url(user))
+        })
         .to_owned();
 
-    Ok(embed)
+    return Ok(embed);
 }
 
 pub fn run_unsubscribe_command(
@@ -271,6 +341,13 @@ fn build_subscribe_command(
                 .name("subscribe")
                 .description("Gets the birthday of a user.")
                 .kind(CommandOptionType::SubCommand)
+                .create_sub_option(|option| {
+                    option
+                        .name("day")
+                        .description("The day you were born.")
+                        .kind(CommandOptionType::User)
+                        .required(true)
+                })
         })
 }
 
@@ -298,4 +375,29 @@ fn build_clear_command(command: &mut CreateApplicationCommand) -> &mut CreateApp
                 .description("Gets the birthday of a user.")
                 .kind(CommandOptionType::SubCommand)
         })
+}
+
+async fn gen_embed_field(
+    db: &sqlx::Pool<sqlx::Postgres>,
+    guild_id: u64,
+    ctx: &Context,
+    subscription: &Subscription,
+) -> Result<(String, String, bool), CommandError> {
+    let birthday = Birthday::get_by_id(db, subscription.birthday_id)
+    .await
+    .map_err(|x| CommandError::Db(x))?
+    .expect("Birthday should not be delete before subscription.");
+
+    match ctx.http.get_member(guild_id, birthday.user_id()).await {
+        Ok(m) => Ok((
+            m.display_name().to_string(),
+            birthday.date.date().to_string(),
+            false,
+        )),
+        Err(_) => Ok((
+            format!("<@{}>:", birthday.user_id()),
+            birthday.date.date().to_string(),
+            false,
+        )),
+    }
 }

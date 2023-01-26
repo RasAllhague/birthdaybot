@@ -1,12 +1,35 @@
-use serenity::model::prelude::interaction::application_command::{
+use serenity::model::{prelude::interaction::application_command::{
     CommandDataOption, CommandDataOptionValue,
-};
+}, user::User};
 use sqlx::types::chrono::{NaiveDate, NaiveDateTime};
 
-pub struct DateInputParser;
-
 #[derive(Debug)]
-pub struct ParserError;
+pub enum ParserError {
+    Date,
+    User(String),
+}
+
+pub struct UserInputParser;
+
+impl UserInputParser {
+    pub fn parse(&self, options: &[CommandDataOption], index: usize) -> Result<User, ParserError> {
+        if let Some(option) = options.get(index) {
+            if let Some(value) = option.resolved.as_ref() {
+                if let CommandDataOptionValue::User(data, _) = value {
+                    return Ok(data.clone());
+                }
+
+                return Err(ParserError::User(String::from("No value found!")));
+            }
+
+            return Err(ParserError::User(String::from("No option found!")));
+        }
+
+        return Err(ParserError::User(format!("No option found at index {}!", index)));
+    }
+}
+
+pub struct DateInputParser;
 
 impl DateInputParser {
     pub fn parse(&self, options: &[CommandDataOption]) -> Result<NaiveDateTime, ParserError> {
@@ -25,7 +48,7 @@ impl DateInputParser {
             }
         }
 
-        Err(ParserError)
+        Err(ParserError::Date)
     }
 
     fn get_int_option(options: &[CommandDataOption], index: usize) -> Result<i64, String> {

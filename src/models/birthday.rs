@@ -28,6 +28,25 @@ impl Birthday {
         }
     }
 
+    pub async fn get_by_id(
+        db: &PgPool,
+        id: i32,
+    ) -> Result<Option<Birthday>, sqlx::Error> {
+        let birthday: Option<Birthday> = sqlx::query_as!(
+            Birthday,
+            "SELECT id_birthday, guild_id, user_id, date, create_date, modify_date
+                FROM birthday
+                WHERE id_birthday = $1;",
+            id,
+        )
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .nth(0);
+
+        Ok(birthday)
+    }
+
     pub async fn get(
         db: &PgPool,
         guild_id: u64,
@@ -46,8 +65,6 @@ impl Birthday {
         .await?
         .into_iter()
         .nth(0);
-
-        info!("{:?}", birthday);
 
         Ok(birthday)
     }
