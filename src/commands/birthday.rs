@@ -1,17 +1,35 @@
-use serenity::builder::CreateApplicationCommand;
+use std::collections::HashMap;
+
+use serenity::builder::{CreateApplicationCommand, CreateEmbed};
 use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::application_command::CommandDataOption;
-use serenity::model::prelude::GuildId;
+use serenity::model::prelude::{Embed, GuildId};
 use serenity::model::user::User;
 use sqlx::PgPool;
 
-pub fn run_info_command(
+use crate::models::birthday::Birthday;
+use crate::models::subscription::Subscription;
+
+pub async fn run_info_command(
     db: &PgPool,
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],
-) -> String {
-    format!("Info command from guild: {}, user: {}", guild_id, user.id)
+) -> Result<CreateEmbed, sqlx::Error> {
+    if let Some(bday) = Birthday::get(db, guild_id.0, user.id.0).await? {
+        let subscriptions = Subscription::get_all(db, guild_id.0, user.id.0).await?;
+
+        let embed = CreateEmbed(HashMap::new())
+            .title(format!("Birthday info for: <@{}>", user.id))
+            .description(format!("Birthday: {}", bday.date));
+    }
+
+    let embed = CreateEmbed(HashMap::new())
+        .title("Interaction failure")
+        .description("You have not registered your birthday yet.")
+        .to_owned();
+
+    Ok(embed)
 }
 
 pub fn run_set_command(
@@ -19,8 +37,18 @@ pub fn run_set_command(
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],
-) -> String {
-    format!("Set command from guild: {}, user: {}", guild_id, user.id)
+) -> Result<CreateEmbed, sqlx::Error> {
+
+
+    let embed = CreateEmbed(HashMap::new())
+        .title("Interaction test")
+        .description(format!(
+            "Set command from guild: {}, user: {}",
+            guild_id, user.id
+        ))
+        .to_owned();
+
+    Ok(embed)
 }
 
 pub fn run_remove_command(
@@ -28,8 +56,16 @@ pub fn run_remove_command(
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],
-) -> String {
-    format!("Remove command from guild: {}, user: {}", guild_id, user.id)
+) -> Result<CreateEmbed, sqlx::Error> {
+    let embed = CreateEmbed(HashMap::new())
+        .title("Interaction test")
+        .description(format!(
+            "Remove command from guild: {}, user: {}",
+            guild_id, user.id
+        ))
+        .to_owned();
+
+    Ok(embed)
 }
 
 pub fn run_subscribe_command(
@@ -37,11 +73,16 @@ pub fn run_subscribe_command(
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],
-) -> String {
-    format!(
-        "Subscribe command from guild: {}, user: {}",
-        guild_id, user.id
-    )
+) -> Result<CreateEmbed, sqlx::Error> {
+    let embed = CreateEmbed(HashMap::new())
+        .title("Interaction test")
+        .description(format!(
+            "Subscribe command from guild: {}, user: {}",
+            guild_id, user.id
+        ))
+        .to_owned();
+
+    Ok(embed)
 }
 
 pub fn run_unsubscribe_command(
@@ -49,11 +90,16 @@ pub fn run_unsubscribe_command(
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],
-) -> String {
-    format!(
-        "Unsubscribe command from guild: {}, user: {}",
-        guild_id, user.id
-    )
+) -> Result<CreateEmbed, sqlx::Error> {
+    let embed = CreateEmbed(HashMap::new())
+        .title("Interaction test")
+        .description(format!(
+            "Unsubscribe command from guild: {}, user: {}",
+            guild_id, user.id
+        ))
+        .to_owned();
+
+    Ok(embed)
 }
 
 pub fn run_clear_command(
@@ -61,8 +107,16 @@ pub fn run_clear_command(
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],
-) -> String {
-    format!("Clear command from guild: {}, user: {}", guild_id, user.id)
+) -> Result<CreateEmbed, sqlx::Error> {
+    let embed = CreateEmbed(HashMap::new())
+        .title("Interaction test")
+        .description(format!(
+            "Remove command from guild: {}, user: {}",
+            guild_id, user.id
+        ))
+        .to_owned();
+
+    Ok(embed)
 }
 
 pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
@@ -95,6 +149,24 @@ fn build_set_command(command: &mut CreateApplicationCommand) -> &mut CreateAppli
                 .name("set")
                 .description("Gets the birthday of a user.")
                 .kind(CommandOptionType::SubCommand)
+                    .create_sub_option(|option| {
+                        option
+                            .name("day")
+                            .description("The day you were born.")
+                            .kind(CommandOptionType::Integer)
+                    })
+                    .create_sub_option(|option| {
+                        option
+                            .name("month")
+                            .description("The month you were born.")
+                            .kind(CommandOptionType::Integer)
+                    })
+                    .create_sub_option(|option| {
+                        option
+                            .name("year")
+                            .description("The year you were born.")
+                            .kind(CommandOptionType::Integer)
+                    })
         })
 }
 

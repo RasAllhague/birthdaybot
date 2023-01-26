@@ -35,6 +35,26 @@ impl Subscription {
         Ok(birthday)
     }
 
+    pub async fn get_all(
+        db: &PgPool,
+        guild_id: u64,
+        user_id: u64,
+    ) -> Result<Vec<Subscription>, sqlx::Error> {
+        let birthday: Vec<Subscription> = sqlx::query_as!(
+            Subscription,
+            "SELECT id_subscription, guild_id, user_id, birthday_id, create_date, modify_date
+                FROM subscription
+                WHERE guild_id = $1
+                AND user_id = $2;",
+            (guild_id as i64),
+            (user_id as i64)
+        )
+        .fetch_all(db)
+        .await?;
+
+        Ok(birthday)
+    }
+
     pub fn guild_id(&self) -> u64 {
         self.guild_id as u64
     }

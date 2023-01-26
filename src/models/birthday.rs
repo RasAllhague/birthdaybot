@@ -32,6 +32,27 @@ impl Birthday {
         Ok(birthday)
     }
 
+    pub async fn insert(&mut self, db: &PgPool) -> Result<(), sqlx::Error> {
+        let id = sqlx::query!(
+            "INSERT INTO birthday 
+                (guild_id, user_id, date, create_date)
+                VALUES
+                ($1, $2, $3, $4)
+                RETURNING id_birthday;",
+                self.guild_id,
+                self.user_id,
+                self.date,
+                self.create_date,
+        )
+        .fetch_one(db)
+        .await?
+        .id_birthday;
+
+        self.id_birthday = id;
+
+        Ok(())
+    }
+
     pub fn guild_id(&self) -> u64 {
         self.guild_id as u64
     }

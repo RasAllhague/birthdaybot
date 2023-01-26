@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use serenity::{
     async_trait,
+    builder::CreateEmbed,
     model::prelude::{
         command::Command,
         interaction::{
@@ -35,15 +38,29 @@ impl EventHandler for Handler {
             }
 
             let content = match command.data.name.as_str() {
-                "birthday" => dispatch_birthday_sub_command(&command, &self.database),
-                _ => "not implemented.".to_string(),
+                "birthday" => dispatch_birthday_sub_command(&command, &self.database).await,
+                _ => Ok(CreateEmbed(HashMap::new())
+                    .title("Interaction failure")
+                    .description("Command has not been implemented.")
+                    .to_owned()),
+            };
+
+            let embed = match content {
+                Ok(e) => e,
+                Err(why) => {
+                    tracing::error!("Cannot respond to slash command: {}", why);
+                    CreateEmbed(HashMap::new())
+                    .title("Interaction failure")
+                    .description("Command ran into an error.")
+                    .to_owned()
+                },
             };
 
             if let Err(why) = command
                 .create_interaction_response(&ctx.http, |response| {
                     response
                         .kind(InteractionResponseType::ChannelMessageWithSource)
-                        .interaction_response_data(|message| message.content(content))
+                        .interaction_response_data(|message| message.add_embed(embed))
                 })
                 .await
             {
@@ -72,18 +89,26 @@ impl EventHandler for Handler {
     }
 }
 
-fn dispatch_birthday_sub_command(
+async fn dispatch_birthday_sub_command(
     command: &ApplicationCommandInteraction,
     database: &sqlx::PgPool,
-) -> String {
+) -> Result<CreateEmbed, sqlx::Error> {
+    let embed = CreateEmbed(HashMap::new())
+        .title("Interaction failure")
+        .description("Command has not been implemented.")
+        .to_owned();
+
     if let Some(subcommand) = command.data.options.get(0) {
         return match subcommand.name.as_str() {
-            "info" => run_info_command(
-                &database,
-                &command.guild_id.unwrap(),
-                &command.user,
-                &subcommand.options,
-            ),
+            "info" => {
+                run_info_command(
+                    &database,
+                    &command.guild_id.unwrap(),
+                    &command.user,
+                    &subcommand.options,
+                )
+                .await
+            }
             "set" => run_set_command(
                 &database,
                 &command.guild_id.unwrap(),
@@ -114,11 +139,11 @@ fn dispatch_birthday_sub_command(
                 &command.user,
                 &subcommand.options,
             ),
-            _ => "Not implemented".to_string(),
+            _ => Ok(embed),
         };
     }
 
-    "Not implemented".to_string()
+    Ok(embed)
 }
 
 #[instrument]
