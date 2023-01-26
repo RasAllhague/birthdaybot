@@ -1,5 +1,3 @@
-use std::env;
-
 use serenity::{
     async_trait,
     model::prelude::{
@@ -8,7 +6,7 @@ use serenity::{
             application_command::ApplicationCommandInteraction, Interaction,
             InteractionResponseType,
         },
-        GuildId, Message, Ready, ResumedEvent,
+        Message, Ready, ResumedEvent,
     },
     prelude::{Context, EventHandler},
 };
@@ -16,24 +14,26 @@ use tracing::{debug, info, instrument};
 
 use crate::commands::{
     self,
-    birthday::{run_clear, run_info, run_remove, run_set, run_subscribe, run_unsubscribe},
+    birthday::{run_clear_command, run_info_command, run_remove_command, run_set_command, run_subscribe_command, run_unsubscribe_command},
 };
 
-pub struct Handler;
+pub struct Handler {
+    pub database: sqlx::PgPool,
+}
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
         if let Interaction::ApplicationCommand(command) = interaction {
-            info!("Received command interaction: {:#?}", command);
+            debug!("Received command interaction: {:#?}", command);
 
             if command.guild_id.is_none() {
                 return;
             }
 
             let content = match command.data.name.as_str() {
-                "birthday" => dispatch_birthday_sub_command(&command),
-                _ => "not implemented :(".to_string(),
+                "birthday" => dispatch_birthday_sub_command(&command, &self.database),
+                _ => "not implemented.".to_string(),
             };
 
             if let Err(why) = command
@@ -44,7 +44,7 @@ impl EventHandler for Handler {
                 })
                 .await
             {
-                info!("Cannot respond to slash command: {}", why);
+                tracing::error!("Cannot respond to slash command: {}", why);
             }
         }
     }
@@ -57,7 +57,7 @@ impl EventHandler for Handler {
         })
         .await;
 
-        info!(
+        debug!(
             "I created the following global slash command: {:#?}",
             guild_command
         );
@@ -69,35 +69,41 @@ impl EventHandler for Handler {
     }
 }
 
-fn dispatch_birthday_sub_command(command: &ApplicationCommandInteraction) -> String {
+fn dispatch_birthday_sub_command(command: &ApplicationCommandInteraction, database: &sqlx::PgPool) -> String {
     if let Some(subcommand) = command.data.options.get(0) {
         return match subcommand.name.as_str() {
-            "info" => run_info(
+            "info" => run_info_command(
+                &database,
                 &command.guild_id.unwrap(),
                 &command.user,
                 &subcommand.options,
             ),
-            "set" => run_set(
+            "set" => run_set_command(
+                &database,
                 &command.guild_id.unwrap(),
                 &command.user,
                 &subcommand.options,
             ),
-            "remove" => run_remove(
+            "remove" => run_remove_command(
+                &database,
                 &command.guild_id.unwrap(),
                 &command.user,
                 &subcommand.options,
             ),
-            "subscribe" => run_subscribe(
+            "subscribe" => run_subscribe_command(
+                &database,
                 &command.guild_id.unwrap(),
                 &command.user,
                 &subcommand.options,
             ),
-            "unsubscribe" => run_unsubscribe(
+            "unsubscribe" => run_unsubscribe_command(
+                &database,
                 &command.guild_id.unwrap(),
                 &command.user,
                 &subcommand.options,
             ),
-            "clear" => run_clear(
+            "clear" => run_clear_command(
+                &database,
                 &command.guild_id.unwrap(),
                 &command.user,
                 &subcommand.options,
