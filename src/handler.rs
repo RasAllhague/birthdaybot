@@ -25,7 +25,7 @@ use sqlx::{
     types::chrono::{NaiveDate, NaiveDateTime, Utc},
     PgPool,
 };
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info, instrument, warn};
 
 use crate::{
     commands::{
@@ -178,6 +178,9 @@ async fn notify_birthdays(
                 Subscription::get_all_by_birthday_id(&db, birthday.id_birthday).await?;
 
             fun_name(subscriptions, &ctx, &bday_user.name, birthday.date.date()).await;
+        }
+        else {
+            warn!("Could not find user: {}", birthday.user_id());
         }
 
         update_last_birthdays(last_birthdays, today);
