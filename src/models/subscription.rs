@@ -92,6 +92,17 @@ impl Subscription {
         Ok(())
     }
 
+    pub async fn delete(&self, db: &PgPool) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DELETE FROM subscription WHERE id_subscription = $1",
+            self.id_subscription
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+
     pub fn guild_id(&self) -> u64 {
         self.guild_id as u64
     }

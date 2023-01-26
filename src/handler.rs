@@ -18,8 +18,8 @@ use tracing::{debug, info, instrument};
 use crate::commands::{
     self,
     birthday::{
-        run_clear_command, run_info_command, run_remove_command, run_set_command,
-        run_subscribe_command, run_unsubscribe_command,
+        run_info_command, run_remove_command, run_set_command, run_subscribe_command,
+        run_unsubscribe_command,
     },
     CommandError,
 };
@@ -126,18 +126,15 @@ async fn dispatch_birthday_sub_command(
                 )
                 .await
             }
-            "unsubscribe" => run_unsubscribe_command(
-                &database,
-                &command.guild_id.unwrap(),
-                &command.user,
-                &subcommand.options,
-            ),
-            "clear" => run_clear_command(
-                &database,
-                &command.guild_id.unwrap(),
-                &command.user,
-                &subcommand.options,
-            ),
+            "unsubscribe" => {
+                run_unsubscribe_command(
+                    &database,
+                    &command.guild_id.unwrap(),
+                    &command.user,
+                    &subcommand.options,
+                )
+                .await
+            }
             _ => Ok(embed),
         };
     }

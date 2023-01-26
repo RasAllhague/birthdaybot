@@ -220,35 +220,58 @@ pub async fn run_subscribe_command(
     return Ok(embed);
 }
 
-pub fn run_unsubscribe_command(
-    _db: &PgPool,
+pub async fn run_unsubscribe_command(
+    db: &PgPool,
     guild_id: &GuildId,
     user: &User,
-    _options: &[CommandDataOption],
+    options: &[CommandDataOption],
 ) -> Result<CreateEmbed, CommandError> {
-    let embed = CreateEmbed(HashMap::new())
-        .title("Interaction test")
-        .description(format!(
-            "Unsubscribe command from guild: {}, user: {}",
-            guild_id, user.id
-        ))
-        .to_owned();
+    let user_to_subcribe_to = UserInputParser
+        .parse(options, 0)
+        .map_err(|x| CommandError::Parser(x))?;
 
-    Ok(embed)
-}
 
-pub fn run_clear_command(
-    _db: &PgPool,
-    guild_id: &GuildId,
-    user: &User,
-    _options: &[CommandDataOption],
-) -> Result<CreateEmbed, CommandError> {
+    if let Some(birthday) = Birthday::get(db, guild_id.0, user_to_subcribe_to.id.0)
+        .await
+        .map_err(|x| CommandError::Db(x))?
+    {
+        if let Some(subscription) = Subscription::get(db, guild_id.0, user.id.0, birthday.id_birthday).await.map_err(|x| CommandError::Db(x))? {
+            subscription.delete(db).await.map_err(|x| CommandError::Db(x))?;
+
+            let embed = CreateEmbed(HashMap::new())
+                .title("Birthday Subscription:")
+                .description("Your subscriptions to this birthday has been deleted.")
+                .author(|author| {
+                    author
+                        .name(user.name.clone())
+                        .icon_url(utils::get_icon_url(user))
+                })
+                .to_owned();
+
+            return Ok(embed);
+        }
+
+        let embed = CreateEmbed(HashMap::new())
+            .title("Birthday Subscription:")
+            .description("You have no subscription for this user.")
+            .author(|author| {
+                author
+                    .name(user.name.clone())
+                    .icon_url(utils::get_icon_url(user))
+            })
+            .to_owned();
+
+        return Ok(embed);
+    }
+
     let embed = CreateEmbed(HashMap::new())
-        .title("Interaction test")
-        .description(format!(
-            "Remove command from guild: {}, user: {}",
-            guild_id, user.id
-        ))
+        .title("Birthday Subscription:")
+        .description("The user has no birthday set up.")
+        .author(|author| {
+            author
+                .name(user.name.clone())
+                .icon_url(utils::get_icon_url(user))
+        })
         .to_owned();
 
     Ok(embed)
@@ -259,8 +282,7 @@ pub fn register(command: &mut CreateApplicationCommand) -> &mut CreateApplicatio
     build_set_command(command);
     build_remove_command(command);
     build_subscribe_command(command);
-    build_unsubscribe_command(command);
-    build_clear_command(command)
+    build_unsubscribe_command(command)
 }
 
 fn build_info_command(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
@@ -321,7 +343,7 @@ fn build_remove_command(command: &mut CreateApplicationCommand) -> &mut CreateAp
         .create_option(|sub_command| {
             sub_command
                 .name("remove")
-                .description("Gets the birthday of a user.")
+                .description("Removes all data of birthdays.")
                 .kind(CommandOptionType::SubCommand)
         })
 }
@@ -335,12 +357,12 @@ fn build_subscribe_command(
         .create_option(|sub_command| {
             sub_command
                 .name("subscribe")
-                .description("Gets the birthday of a user.")
+                .description("Subscribes to the birthday of another user.")
                 .kind(CommandOptionType::SubCommand)
                 .create_sub_option(|option| {
                     option
-                        .name("day")
-                        .description("The day you were born.")
+                        .name("user")
+                        .description("The user you want to subscribe to.")
                         .kind(CommandOptionType::User)
                         .required(true)
                 })
@@ -356,20 +378,15 @@ fn build_unsubscribe_command(
         .create_option(|sub_command| {
             sub_command
                 .name("unsubscribe")
-                .description("Gets the birthday of a user.")
+                .description("Unsubscribes from a user.")
                 .kind(CommandOptionType::SubCommand)
-        })
-}
-
-fn build_clear_command(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
-    command
-        .name("birthday")
-        .description("A command for birthdays.")
-        .create_option(|sub_command| {
-            sub_command
-                .name("clear")
-                .description("Gets the birthday of a user.")
-                .kind(CommandOptionType::SubCommand)
+                .create_sub_option(|option| {
+                    option
+                        .name("user")
+                        .description("The user you want to unsubscribe from.")
+                        .kind(CommandOptionType::User)
+                        .required(true)
+                })
         })
 }
 
