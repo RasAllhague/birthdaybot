@@ -5,33 +5,63 @@ use serenity::model::prelude::GuildId;
 use serenity::model::user::User;
 use sqlx::PgPool;
 
-pub fn run_info_command(db: &PgPool, guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
+pub fn run_info_command(
+    db: &PgPool,
+    guild_id: &GuildId,
+    user: &User,
+    _options: &[CommandDataOption],
+) -> String {
     format!("Info command from guild: {}, user: {}", guild_id, user.id)
 }
 
-pub fn run_set_command(db: &PgPool, guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
+pub fn run_set_command(
+    db: &PgPool,
+    guild_id: &GuildId,
+    user: &User,
+    _options: &[CommandDataOption],
+) -> String {
     format!("Set command from guild: {}, user: {}", guild_id, user.id)
 }
 
-pub fn run_remove_command(db: &PgPool, guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
+pub fn run_remove_command(
+    db: &PgPool,
+    guild_id: &GuildId,
+    user: &User,
+    _options: &[CommandDataOption],
+) -> String {
     format!("Remove command from guild: {}, user: {}", guild_id, user.id)
 }
 
-pub fn run_subscribe_command(db: &PgPool, guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
+pub fn run_subscribe_command(
+    db: &PgPool,
+    guild_id: &GuildId,
+    user: &User,
+    _options: &[CommandDataOption],
+) -> String {
     format!(
         "Subscribe command from guild: {}, user: {}",
         guild_id, user.id
     )
 }
 
-pub fn run_unsubscribe_command(db: &PgPool, guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
+pub fn run_unsubscribe_command(
+    db: &PgPool,
+    guild_id: &GuildId,
+    user: &User,
+    _options: &[CommandDataOption],
+) -> String {
     format!(
         "Unsubscribe command from guild: {}, user: {}",
         guild_id, user.id
     )
 }
 
-pub fn run_clear_command(db: &PgPool, guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
+pub fn run_clear_command(
+    db: &PgPool,
+    guild_id: &GuildId,
+    user: &User,
+    _options: &[CommandDataOption],
+) -> String {
     format!("Clear command from guild: {}, user: {}", guild_id, user.id)
 }
 

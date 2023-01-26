@@ -10,20 +10,24 @@ pub struct Birthday {
 }
 
 impl Birthday {
-    pub async fn get(db: &PgPool, guild_id: u64, user_id: u64) -> Result<Option<Birthday>, sqlx::Error> {
+    pub async fn get(
+        db: &PgPool,
+        guild_id: u64,
+        user_id: u64,
+    ) -> Result<Option<Birthday>, sqlx::Error> {
         let birthday: Option<Birthday> = sqlx::query_as!(
-                Birthday,
-                "SELECT id_birthday, guild_id, user_id, date, create_date, modify_date
+            Birthday,
+            "SELECT id_birthday, guild_id, user_id, date, create_date, modify_date
                 FROM birthday
                 WHERE guild_id = $1
                 AND user_id = $2;",
-                (guild_id as i64),
-                (user_id as i64),
-            )
-            .fetch_all(db)
-            .await?
-            .into_iter()
-            .nth(0);
+            (guild_id as i64),
+            (user_id as i64),
+        )
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .nth(0);
 
         Ok(birthday)
     }

@@ -10,22 +10,27 @@ pub struct Subscription {
 }
 
 impl Subscription {
-    pub async fn get(db: &PgPool, guild_id: u64, user_id: u64, birthday_id: i32) -> Result<Option<Subscription>, sqlx::Error> {
+    pub async fn get(
+        db: &PgPool,
+        guild_id: u64,
+        user_id: u64,
+        birthday_id: i32,
+    ) -> Result<Option<Subscription>, sqlx::Error> {
         let birthday: Option<Subscription> = sqlx::query_as!(
             Subscription,
-                "SELECT id_subscription, guild_id, user_id, birthday_id, create_date, modify_date
+            "SELECT id_subscription, guild_id, user_id, birthday_id, create_date, modify_date
                 FROM subscription
                 WHERE guild_id = $1
                 AND user_id = $2
                 AND birthday_id = $3;",
-                (guild_id as i64),
-                (user_id as i64),
-                birthday_id
+            (guild_id as i64),
+            (user_id as i64),
+            birthday_id
         )
-            .fetch_all(db)
-            .await?
-            .into_iter()
-            .nth(0);
+        .fetch_all(db)
+        .await?
+        .into_iter()
+        .nth(0);
 
         Ok(birthday)
     }

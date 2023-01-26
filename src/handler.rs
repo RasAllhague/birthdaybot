@@ -14,7 +14,10 @@ use tracing::{debug, info, instrument};
 
 use crate::commands::{
     self,
-    birthday::{run_clear_command, run_info_command, run_remove_command, run_set_command, run_subscribe_command, run_unsubscribe_command},
+    birthday::{
+        run_clear_command, run_info_command, run_remove_command, run_set_command,
+        run_subscribe_command, run_unsubscribe_command,
+    },
 };
 
 pub struct Handler {
@@ -69,7 +72,10 @@ impl EventHandler for Handler {
     }
 }
 
-fn dispatch_birthday_sub_command(command: &ApplicationCommandInteraction, database: &sqlx::PgPool) -> String {
+fn dispatch_birthday_sub_command(
+    command: &ApplicationCommandInteraction,
+    database: &sqlx::PgPool,
+) -> String {
     if let Some(subcommand) = command.data.options.get(0) {
         return match subcommand.name.as_str() {
             "info" => run_info_command(
