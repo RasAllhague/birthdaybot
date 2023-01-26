@@ -9,7 +9,7 @@ use serenity::{
             application_command::ApplicationCommandInteraction, Interaction,
             InteractionResponseType,
         },
-        Message, Ready, ResumedEvent, PartialGuild,
+        Message, Ready, ResumedEvent,
     },
     prelude::{Context, EventHandler},
 };

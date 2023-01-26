@@ -3,17 +3,14 @@ use std::collections::HashMap;
 use serenity::builder::{CreateApplicationCommand, CreateEmbed};
 use serenity::futures::future::join_all;
 use serenity::model::prelude::command::CommandOptionType;
-use serenity::model::prelude::interaction::application_command::{
-    CommandDataOption, CommandDataOptionValue,
-};
-use serenity::model::prelude::{Embed, EmbedField, GuildId, PartialGuild};
+use serenity::model::prelude::interaction::application_command::CommandDataOption;
+use serenity::model::prelude::GuildId;
 use serenity::model::user::User;
 use serenity::prelude::Context;
-use sqlx::types::chrono::{NaiveDate, NaiveDateTime, Utc};
+use sqlx::types::chrono::Utc;
 use sqlx::PgPool;
-use tracing::info;
 
-use crate::models::birthday::{self, Birthday};
+use crate::models::birthday::Birthday;
 use crate::models::subscription::Subscription;
 use crate::utils;
 
@@ -225,7 +222,7 @@ pub async fn run_subscribe_command(
 }
 
 pub fn run_unsubscribe_command(
-    db: &PgPool,
+    _db: &PgPool,
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],
@@ -242,7 +239,7 @@ pub fn run_unsubscribe_command(
 }
 
 pub fn run_clear_command(
-    db: &PgPool,
+    _db: &PgPool,
     guild_id: &GuildId,
     user: &User,
     _options: &[CommandDataOption],

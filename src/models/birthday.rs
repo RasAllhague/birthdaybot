@@ -1,5 +1,4 @@
 use sqlx::{types::chrono::NaiveDateTime, PgPool};
-use tracing::info;
 
 #[derive(Clone, Debug)]
 pub struct Birthday {
