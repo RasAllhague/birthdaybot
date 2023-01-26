@@ -27,10 +27,7 @@ impl Birthday {
         }
     }
 
-    pub async fn get_by_id(
-        db: &PgPool,
-        id: i32,
-    ) -> Result<Option<Birthday>, sqlx::Error> {
+    pub async fn get_by_id(db: &PgPool, id: i32) -> Result<Option<Birthday>, sqlx::Error> {
         let birthday: Option<Birthday> = sqlx::query_as!(
             Birthday,
             "SELECT id_birthday, guild_id, user_id, date, create_date, modify_date

@@ -66,7 +66,6 @@ pub async fn run_info_command(
     Ok(embed)
 }
 
-
 pub async fn run_set_command(
     db: &PgPool,
     guild_id: &GuildId,
@@ -381,9 +380,9 @@ async fn gen_embed_field(
     subscription: &Subscription,
 ) -> Result<(String, String, bool), CommandError> {
     let birthday = Birthday::get_by_id(db, subscription.birthday_id)
-    .await
-    .map_err(|x| CommandError::Db(x))?
-    .expect("Birthday should not be delete before subscription.");
+        .await
+        .map_err(|x| CommandError::Db(x))?
+        .expect("Birthday should not be delete before subscription.");
 
     match ctx.http.get_member(guild_id, birthday.user_id()).await {
         Ok(m) => Ok((

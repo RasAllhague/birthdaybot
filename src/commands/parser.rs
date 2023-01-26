@@ -1,6 +1,7 @@
-use serenity::model::{prelude::interaction::application_command::{
-    CommandDataOption, CommandDataOptionValue,
-}, user::User};
+use serenity::model::{
+    prelude::interaction::application_command::{CommandDataOption, CommandDataOptionValue},
+    user::User,
+};
 use sqlx::types::chrono::{NaiveDate, NaiveDateTime};
 
 #[derive(Debug)]
@@ -25,7 +26,10 @@ impl UserInputParser {
             return Err(ParserError::User(String::from("No option found!")));
         }
 
-        return Err(ParserError::User(format!("No option found at index {}!", index)));
+        return Err(ParserError::User(format!(
+            "No option found at index {}!",
+            index
+        )));
     }
 }
 
