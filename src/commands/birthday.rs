@@ -1,7 +1,7 @@
 use serenity::builder::CreateApplicationCommand;
-use serenity::model::prelude::GuildId;
 use serenity::model::prelude::command::CommandOptionType;
 use serenity::model::prelude::interaction::application_command::CommandDataOption;
+use serenity::model::prelude::GuildId;
 use serenity::model::user::User;
 
 pub fn run_info(guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
@@ -17,11 +17,17 @@ pub fn run_remove(guild_id: &GuildId, user: &User, _options: &[CommandDataOption
 }
 
 pub fn run_subscribe(guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
-    format!("Subscribe command from guild: {}, user: {}", guild_id, user.id)
+    format!(
+        "Subscribe command from guild: {}, user: {}",
+        guild_id, user.id
+    )
 }
 
 pub fn run_unsubscribe(guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
-    format!("Unsubscribe command from guild: {}, user: {}", guild_id, user.id)
+    format!(
+        "Unsubscribe command from guild: {}, user: {}",
+        guild_id, user.id
+    )
 }
 
 pub fn run_clear(guild_id: &GuildId, user: &User, _options: &[CommandDataOption]) -> String {
@@ -73,7 +79,9 @@ fn build_remove_command(command: &mut CreateApplicationCommand) -> &mut CreateAp
         })
 }
 
-fn build_subscribe_command(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+fn build_subscribe_command(
+    command: &mut CreateApplicationCommand,
+) -> &mut CreateApplicationCommand {
     command
         .name("birthday")
         .description("A command for birthdays.")
@@ -85,7 +93,9 @@ fn build_subscribe_command(command: &mut CreateApplicationCommand) -> &mut Creat
         })
 }
 
-fn build_unsubscribe_command(command: &mut CreateApplicationCommand) -> &mut CreateApplicationCommand {
+fn build_unsubscribe_command(
+    command: &mut CreateApplicationCommand,
+) -> &mut CreateApplicationCommand {
     command
         .name("birthday")
         .description("A command for birthdays.")

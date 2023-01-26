@@ -2,12 +2,22 @@ use std::env;
 
 use serenity::{
     async_trait,
-    model::prelude::{Message, Ready, ResumedEvent, interaction::{Interaction, InteractionResponseType, application_command::ApplicationCommandInteraction}, GuildId, command::Command},
+    model::prelude::{
+        command::Command,
+        interaction::{
+            application_command::ApplicationCommandInteraction, Interaction,
+            InteractionResponseType,
+        },
+        GuildId, Message, Ready, ResumedEvent,
+    },
     prelude::{Context, EventHandler},
 };
 use tracing::{debug, info, instrument};
 
-use crate::commands::{self, birthday::{run_info, run_subscribe, run_unsubscribe, run_clear, run_set, run_remove}};
+use crate::commands::{
+    self,
+    birthday::{run_clear, run_info, run_remove, run_set, run_subscribe, run_unsubscribe},
+};
 
 pub struct Handler;
 
@@ -47,7 +57,10 @@ impl EventHandler for Handler {
         })
         .await;
 
-        info!("I created the following global slash command: {:#?}", guild_command);
+        info!(
+            "I created the following global slash command: {:#?}",
+            guild_command
+        );
     }
 
     #[instrument(skip(self, _ctx))]
@@ -56,18 +69,41 @@ impl EventHandler for Handler {
     }
 }
 
-
 fn dispatch_birthday_sub_command(command: &ApplicationCommandInteraction) -> String {
     if let Some(subcommand) = command.data.options.get(0) {
         return match subcommand.name.as_str() {
-            "info" => run_info(&command.guild_id.unwrap(), &command.user, &subcommand.options),
-            "set" => run_set(&command.guild_id.unwrap(), &command.user, &subcommand.options),
-            "remove" => run_remove(&command.guild_id.unwrap(), &command.user, &subcommand.options),
-            "subscribe" => run_subscribe(&command.guild_id.unwrap(), &command.user, &subcommand.options),
-            "unsubscribe" => run_unsubscribe(&command.guild_id.unwrap(), &command.user, &subcommand.options),
-            "clear" => run_clear(&command.guild_id.unwrap(), &command.user, &subcommand.options),
-            _ => "Not implemented".to_string(), 
-        }
+            "info" => run_info(
+                &command.guild_id.unwrap(),
+                &command.user,
+                &subcommand.options,
+            ),
+            "set" => run_set(
+                &command.guild_id.unwrap(),
+                &command.user,
+                &subcommand.options,
+            ),
+            "remove" => run_remove(
+                &command.guild_id.unwrap(),
+                &command.user,
+                &subcommand.options,
+            ),
+            "subscribe" => run_subscribe(
+                &command.guild_id.unwrap(),
+                &command.user,
+                &subcommand.options,
+            ),
+            "unsubscribe" => run_unsubscribe(
+                &command.guild_id.unwrap(),
+                &command.user,
+                &subcommand.options,
+            ),
+            "clear" => run_clear(
+                &command.guild_id.unwrap(),
+                &command.user,
+                &subcommand.options,
+            ),
+            _ => "Not implemented".to_string(),
+        };
     }
 
     "Not implemented".to_string()

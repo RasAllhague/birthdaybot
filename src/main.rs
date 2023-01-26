@@ -1,14 +1,11 @@
 use std::env;
 
 use handler::Handler;
-use serenity::{
-    prelude::GatewayIntents,
-    Client,
-};
+use serenity::{prelude::GatewayIntents, Client};
 use tracing::{error, instrument};
 
-mod handler;
 mod commands;
+mod handler;
 
 #[tokio::main]
 #[instrument]
