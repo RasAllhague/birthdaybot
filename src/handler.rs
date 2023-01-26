@@ -101,14 +101,7 @@ async fn dispatch_birthday_sub_command(
 
     if let Some(subcommand) = command.data.options.get(0) {
         return match subcommand.name.as_str() {
-            "info" => {
-                run_info_command(
-                    &database,
-                    &command.guild_id.unwrap(),
-                    &command.user,
-                )
-                .await
-            }
+            "info" => run_info_command(&database, &command.guild_id.unwrap(), &command.user).await,
             "set" => {
                 run_set_command(
                     &database,
@@ -118,11 +111,9 @@ async fn dispatch_birthday_sub_command(
                 )
                 .await
             }
-            "remove" => run_remove_command(
-                &database,
-                &command.guild_id.unwrap(),
-                &command.user,
-            ).await,
+            "remove" => {
+                run_remove_command(&database, &command.guild_id.unwrap(), &command.user).await
+            }
             "subscribe" => run_subscribe_command(
                 &database,
                 &command.guild_id.unwrap(),
