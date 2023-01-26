@@ -106,7 +106,6 @@ async fn dispatch_birthday_sub_command(
                     &database,
                     &command.guild_id.unwrap(),
                     &command.user,
-                    &subcommand.options,
                 )
                 .await
             }
@@ -123,8 +122,7 @@ async fn dispatch_birthday_sub_command(
                 &database,
                 &command.guild_id.unwrap(),
                 &command.user,
-                &subcommand.options,
-            ),
+            ).await,
             "subscribe" => run_subscribe_command(
                 &database,
                 &command.guild_id.unwrap(),

@@ -9,9 +9,11 @@ use serenity::model::prelude::{Embed, GuildId};
 use serenity::model::user::User;
 use sqlx::types::chrono::{NaiveDate, NaiveDateTime, Utc};
 use sqlx::PgPool;
+use tracing::info;
 
-use crate::models::birthday::Birthday;
+use crate::models::birthday::{Birthday, self};
 use crate::models::subscription::Subscription;
+use crate::utils;
 
 use super::parser::DateInputParser;
 use super::CommandError;
@@ -20,8 +22,9 @@ pub async fn run_info_command(
     db: &PgPool,
     guild_id: &GuildId,
     user: &User,
-    _options: &[CommandDataOption],
 ) -> Result<CreateEmbed, CommandError> {
+    info!("Gid: {}, uid: {}", guild_id, user.id);
+
     if let Some(bday) = Birthday::get(db, guild_id.0, user.id.0)
         .await
         .map_err(|x| CommandError::Db(x))?
@@ -31,8 +34,14 @@ pub async fn run_info_command(
             .map_err(|x| CommandError::Db(x))?;
 
         let embed = CreateEmbed(HashMap::new())
-            .title(format!("Birthday info for: <@{}>", user.id))
-            .description(format!("Birthday: {}", bday.date));
+            .title("Birthday:")
+            .description(format!("{}", bday.date.date()))
+            .author(|author| author
+                .name(user.name.clone())
+                .icon_url(utils::get_icon_url(user)))
+            .to_owned();
+
+        return Ok(embed);
     }
 
     let embed = CreateEmbed(HashMap::new())
@@ -53,30 +62,59 @@ pub async fn run_set_command(
     let date = date_parser
         .parse(options)
         .map_err(|x| CommandError::Parser(x))?;
+    
+    let mut text_part = "set";
+    let mut birthday: Birthday;
+        
+    if let Some(mut bday) = Birthday::get(db, guild_id.0, user.id.0).await.map_err(|x| CommandError::Db(x))? {
+        bday.date = date;
+        bday.modify_date = Some(Utc::now().naive_utc());
+        bday.update(db).await.map_err(|x| CommandError::Db(x))?;
 
-    let mut birthday = Birthday::new(guild_id.0, user.id.0, date, Utc::now().naive_utc());
-    birthday.insert(db).await.map_err(|x| CommandError::Db(x))?;
+        text_part = "updated";
+        birthday = bday;
+    }
+    else {
+        birthday = Birthday::new(guild_id.0, user.id.0, date, Utc::now().naive_utc());
+        birthday.insert(db).await.map_err(|x| CommandError::Db(x))?;
+    }
 
     let embed = CreateEmbed(HashMap::new())
-        .title(format!("Birthday set for: <@{}>", user.id))
-        .description(format!("Birthday: {}", birthday.date))
+        .title("Birthday:")
+        .description(format!("Birthday has been {} to: {}", text_part, birthday.date.date()))
+        .author(|author| author
+            .name(user.name.clone())
+            .icon_url(utils::get_icon_url(user)))
         .to_owned();
 
     Ok(embed)
 }
 
-pub fn run_remove_command(
+pub async fn run_remove_command(
     db: &PgPool,
     guild_id: &GuildId,
     user: &User,
-    _options: &[CommandDataOption],
 ) -> Result<CreateEmbed, CommandError> {
+    if let Some(birthday) = Birthday::get(db, guild_id.0, user.id.0).await.map_err(|x| CommandError::Db(x))? {
+        birthday.delete(db).await.map_err(|x| CommandError::Db(x))?;
+
+        let embed = CreateEmbed(HashMap::new())
+            .title("Birthday:")
+            .description("Your birthday and all subscriptions to this birthday has been deleted.")
+            .author(|author| author
+                .name(user.name.clone())
+                .icon_url(utils::get_icon_url(user)))
+            .to_owned();
+
+        return Ok(embed);
+    }
+
     let embed = CreateEmbed(HashMap::new())
-        .title("Interaction test")
-        .description(format!(
-            "Remove command from guild: {}, user: {}",
-            guild_id, user.id
-        ))
+        .title("Birthday:")
+        .description("You currently have no birthday set up, which i could delete!")
+        .author(|author| author
+            .name(user.name.clone())
+            .icon_url(utils::get_icon_url(user)))
         .to_owned();
 
     Ok(embed)

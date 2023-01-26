@@ -1,5 +1,7 @@
 use sqlx::{types::chrono::NaiveDateTime, PgPool};
-#[derive(Clone)]
+use tracing::info;
+
+#[derive(Clone, Debug)]
 pub struct Birthday {
     pub id_birthday: i32,
     guild_id: i64,
@@ -45,6 +47,8 @@ impl Birthday {
         .into_iter()
         .nth(0);
 
+        info!("{:?}", birthday);
+
         Ok(birthday)
     }
 
@@ -65,6 +69,43 @@ impl Birthday {
         .id_birthday;
 
         self.id_birthday = id;
+
+        Ok(())
+    }
+
+    pub async fn update(&self, db: &PgPool) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE birthday SET date = $1, modify_date = $2
+                WHERE guild_id = $3
+                AND user_id = $4;",
+            self.date,
+            self.modify_date,
+            self.guild_id,
+            self.user_id
+        )
+        .execute(db)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete(&self, db: &PgPool) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "DELETE FROM subscription WHERE birthday_id = $1",
+            self.id_birthday
+        )
+        .execute(db)
+        .await?;
+
+        sqlx::query!(
+            "DELETE FROM birthday
+                WHERE guild_id = $1
+                AND user_id = $2;",
+            self.guild_id,
+            self.user_id
+        )
+        .execute(db)
+        .await?;
 
         Ok(())
     }
