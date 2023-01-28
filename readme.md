@@ -17,6 +17,10 @@
  - subscribe birthday
  - unsubscribe birthday
 
+## Environment variables:
+ - BIRTHDAY_BOT_TOKEN
+ - DATABASE_URL
+
 ## Commands:
 
  - `/birthday info`
