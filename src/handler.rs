@@ -36,7 +36,7 @@ use crate::{
         },
         CommandError,
     },
-    models::{birthday::Birthday, subscription::Subscription},
+    models::{birthday::Birthday, subscription::{Subscription, SendNotification}},
 };
 
 pub struct Handler {
@@ -115,11 +115,9 @@ impl EventHandler for Handler {
             let db1 = Arc::clone(&db);
 
             tokio::spawn(async move {
-                let mut birthdays: Vec<(i32, NaiveDate)> = Vec::new();
-
                 loop {
                     if let Err(why) =
-                        notify_birthdays(Arc::clone(&ctx3), Arc::clone(&db1), &mut birthdays).await
+                        notify_birthdays(Arc::clone(&ctx3), Arc::clone(&db1)).await
                     {
                         error!("Failed to notify birthdays, err: {}", why);
                     };
@@ -140,34 +138,26 @@ impl EventHandler for Handler {
 async fn notify_birthdays(
     ctx: Arc<Context>,
     db: Arc<PgPool>,
-    last_birthdays: &mut Vec<(i32, NaiveDate)>,
 ) -> Result<(), sqlx::Error> {
     info!("Notification started!");
 
-    let tmp = last_birthdays.clone();
     let today = Utc::now().naive_utc().date();
 
     let birthdays = Birthday::get_all(&db).await?;
     let birthdays = birthdays
         .iter()
-        .filter(|b| b.date.date() == today)
-        .filter(|b| {
-            !tmp.iter()
-                .any(|x| x.0 == b.id_birthday && x.1 == b.date.date())
-        });
+        .filter(|b| b.date.date() == today);
 
     for birthday in birthdays {
         if let Ok(bday_user) = ctx.http.get_user(birthday.user_id()).await {
             let subscriptions =
-                Subscription::get_all_by_birthday_id(&db, birthday.id_birthday).await?;
+                Subscription::get_all_by_birthday_id(&db, birthday.id_birthday, today.year()).await?;
 
-            send_birthday_dm(subscriptions, &ctx, &bday_user.name, birthday.date.date()).await;
+            send_birthday_dm(subscriptions, &ctx, &db, &bday_user.name).await;
         }
         else {
             warn!("Could not find user: {}", birthday.user_id());
         }
-
-        update_last_birthdays(last_birthdays, today);
     }
 
     info!("Notification finished!");
@@ -178,9 +168,11 @@ async fn notify_birthdays(
 async fn send_birthday_dm(
     subscriptions: Vec<Subscription>,
     ctx: &Arc<Context>,
+    db: &Arc<PgPool>,
     user_name: &str,
-    date: NaiveDate,
 ) {
+    let today = Utc::now().naive_utc();
+
     for subscription in subscriptions {
         if let Ok(user) = ctx.http.get_user(subscription.user_id()).await {
             if let Ok(priv_channel) = user.create_dm_channel(ctx).await {
@@ -189,7 +181,7 @@ async fn send_birthday_dm(
                         message.embed(|embed| {
                             embed.title("Birthday:").description(format!(
                                 "Hey the user `{}` has birthday today ({}).",
-                                user_name, date,
+                                user_name, today,
                             ))
                         })
                     })
@@ -197,7 +189,13 @@ async fn send_birthday_dm(
                 {
                     error!("Could not send birthday in dm channel, err: {}", why);
                 } else {
-                    info!("Notified of birthday!");
+                    
+                    let mut send_notification = SendNotification::new(subscription.id_subscription, today.year(), today);
+                    
+                    match send_notification.insert(&db).await {
+                        Ok(_) => info!("Notified of birthday!"),
+                        Err(why) => error!("Could not create notifcation, why: {why}"),
+                    };
                 }
             }
         }
