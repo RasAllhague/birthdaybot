@@ -131,11 +131,7 @@ impl Subscription {
 
         Ok(())
     }
-
-    pub fn guild_id(&self) -> u64 {
-        self.guild_id as u64
-    }
-
+    
     pub fn user_id(&self) -> u64 {
         self.user_id as u64
     }
@@ -149,28 +145,6 @@ impl SendNotification {
             current_year: current_year,
             create_date,
         }
-    }
-
-    pub async fn get_for_subscription(
-        db: &PgPool,
-        subscription_id: i32,
-        current_year: i32
-    ) -> Result<Option<SendNotification>, sqlx::Error> {
-        let notification: Option<SendNotification> = sqlx::query_as!(
-            SendNotification,
-            "SELECT id_send_notification, subscription_id, current_year, create_date
-                FROM send_notifications
-                WHERE subscription_id = $1
-                AND current_year = $2;",
-            subscription_id,
-            current_year
-        )
-        .fetch_all(db)
-        .await?
-        .into_iter()
-        .nth(0);
-
-        Ok(notification)
     }
 
     pub async fn insert(&mut self, db: &PgPool) -> Result<(), sqlx::Error> {

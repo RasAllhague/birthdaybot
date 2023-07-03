@@ -135,10 +135,6 @@ impl Birthday {
         Ok(())
     }
 
-    pub fn guild_id(&self) -> u64 {
-        self.guild_id as u64
-    }
-
     pub fn user_id(&self) -> u64 {
         self.user_id as u64
     }

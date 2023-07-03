@@ -16,13 +16,12 @@ use serenity::{
         interaction::{
             application_command::ApplicationCommandInteraction, Interaction,
             InteractionResponseType,
-        },
-        Activity, ChannelId, GuildId, Message, Ready, ResumedEvent,
+        }, Message, Ready, ResumedEvent,
     },
     prelude::{Context, EventHandler},
 };
 use sqlx::{
-    types::chrono::{NaiveDate, NaiveDateTime, Utc},
+    types::chrono::Utc,
     PgPool,
 };
 use tracing::{debug, error, info, instrument, warn};
@@ -31,7 +30,7 @@ use crate::{
     commands::{
         self,
         birthday::{
-            self, run_info_command, run_remove_command, run_set_command, run_subscribe_command,
+            run_info_command, run_remove_command, run_set_command, run_subscribe_command,
             run_unsubscribe_command,
         },
         CommandError,
@@ -198,14 +197,6 @@ async fn send_birthday_dm(
                     };
                 }
             }
-        }
-    }
-}
-
-fn update_last_birthdays(last_birthdays: &mut Vec<(i32, NaiveDate)>, today: NaiveDate) {
-    for mut last_birthday in last_birthdays.iter_mut() {
-        if last_birthday.1 < today {
-            last_birthday.1 = today
         }
     }
 }
