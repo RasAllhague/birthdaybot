@@ -15,7 +15,7 @@ async fn main() {
     tracing_subscriber::fmt::init();
 
     let token = env::var("BIRTHDAY_BOT_TOKEN").expect("Expected a token in the environment");
-    let db_url = env::var("DATABASE_URL").expect("Expected database url in the environment");
+    let db_url = env::var("BIRTHDAY_BOT_DATABASE_URL").expect("Expected database url in the environment");
 
     let database = sqlx::postgres::PgPoolOptions::new()
         .max_connections(5)
